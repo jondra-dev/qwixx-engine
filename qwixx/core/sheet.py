@@ -60,6 +60,7 @@ class Row:
     ascending: bool # True for Red & Yellow (2 -> 12), False for Green & Blue (12 -> 2)
     marked_numbers: list[int] = field(default_factory=list)
     is_locked: bool = False
+    has_lock_bonus: bool = False # True only if THIS sheet triggered the lock
 
     @property
     def target_sequence(self) -> list[int]:
@@ -73,9 +74,9 @@ class Row:
 
     @property
     def mark_count(self) -> int:
-        """Total marks counted toward scoring, including the lock bonus box."""
+        """Total marks counted toward scoring, including the lock bonus if earned."""
         # When a row locks, the player crosses the lock number AND gets an extra bonus mark on the lock symbol itself.
-        return len(self.marked_numbers) + (1 if self.is_locked else 0)
+        return len(self.marked_numbers) + (1 if self.has_lock_bonus else 0)
 
     def can_mark(self, number: int) -> bool:
         """Validates whether a number can legally be marked in this row."""
@@ -110,12 +111,20 @@ class Row:
 
         self.marked_numbers.append(number)
 
-        # If marking the final number, lock the row
+        # Marking the final number earns the padlock bonus and locks the row
         if number == self.lock_number:
             self.is_locked = True
-            return True # Row is now locked
+            self.has_lock_bonus = True
+            return True  # Row is now locked
 
         return False # Row is not locked yet
+
+    def external_lock(self) -> None:
+        """Locks this row because another player has locked it.
+        
+        Prevents further marks without awarding this sheet the lock bonus.
+        """
+        self.is_locked = True
 
     def score(self) -> int:
         """Calculates the total points scored by this row."""
