@@ -61,4 +61,14 @@ class DicePool:
         """Rolls both white dice and all active colored dice. Returns a DiceRoll of the results.
         
         Accepts an optional random.Random instance for seeded simulation rolls."""
-        roller 
+        roller = rng if rng is not None else random
+
+        w1 = roller.randint(1, 6)
+        w2 = roller.randint(1, 6)
+
+        colored = {
+            color: roller.randint(1, 6)
+            for color in self.active_colors
+        }
+
+        return DiceRoll(white1=w1, white2=w2, colored_dice=colored)
