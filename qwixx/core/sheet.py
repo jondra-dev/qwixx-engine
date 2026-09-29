@@ -131,3 +131,32 @@ class Row:
         # Cap count at 12 to safely match table bounds.
         count = min(self.mark_count, 12)
         return ROW_SCORING_TABLE[count]
+
+@dataclass
+class ScoreSheet:
+    """Represents a player's complete Qwixx scoresheet containing all four colored rows and penalty tracking."""
+
+    # Initialize all four rows with their correct ascending/desceding orders
+    rows: dict[RowColor, Row] = field(
+        default_factory=lambda: {
+            RowColor.RED: Row(color=RowColor.RED, ascending=True),
+            RowColor.YELLOW: Row(color=RowColor.YELLOW, ascending=True),
+            RowColor.GREEN: Row(color=RowColor.GREEN, ascending=False),
+            RowColor.BLUE: Row(color=RowColor.BLUE, ascending=False),
+        }
+    )
+    penalties: int = 0  # Count of failed turn penalties
+
+    def add_penalty(self) -> None:
+        """Records a -5 penalty mark (maximum of 4 penalties allowed)."""
+        self.penalties += 1
+
+    def external_lock_row(self, color: RowColor) -> None:
+        """Closes a row on this sheet when an opponent locks it."""
+        self.rows[color].external_lock()
+
+    def total_score(self) -> int:
+        """Calculates final score across all rows minus accumulated penalties."""
+        row_total = sum(row.score() for row in self.rows.values())
+        penalty_total = self.penalties * PENALTY_VALUE
+        return row_total - penalty_total
