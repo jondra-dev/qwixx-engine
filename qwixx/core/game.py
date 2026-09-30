@@ -30,12 +30,22 @@ class QwixxGame:
             raise ValueError("Qwixx requires at least 2 players.")
 
         self.players: list[Player] = players
-        # Each player gets a score sheet
-        self.sheets: dict[Player, ScoreSheet] = {p: ScoreSheet() for p in players}
-        self.dice_pool: DicePool = DicePool()
-        self.active_index: int = 0
-        self.locked_rows: set[RowColor] = set()
         self.rng: random.Random | None = rng
+        # Each player gets a score sheet
+        self.sheets: dict[Player, ScoreSheet]
+        self.dice_pool: DicePool
+        self.active_index: int
+        self.locked_rows: set[RowColor]
+
+        # Initialize the mutable round state
+        self.reset()
+
+    def reset(self) -> None:
+        """Resets the game state for a fresh match with the same players."""
+        self.sheets = {p: ScoreSheet() for p in self.players}
+        self.dice_pool = DicePool()
+        self.active_index = 0
+        self.locked_rows = set()
 
     @property
     def active_player(self) -> Player:
