@@ -13,7 +13,7 @@ def main() -> None:
 
     game = QwixxGame(players=[alice, bob])
 
-    print("Runnint 5 simulated games:\n + - * 35")
+    print("Running 5 simulated games:\n + - * 35")
 
     for match in range(1, 6):
         game.reset()
