@@ -16,6 +16,7 @@ from qwixx.core.action import (
 from qwixx.core.dice import DiceRoll, DicePool
 from qwixx.core.sheet import RowColor, ScoreSheet
 from qwixx.players.base import Player
+from qwixx.core.observer import GameObserver
 
 
 class QwixxGame:
@@ -25,12 +26,14 @@ class QwixxGame:
             self,
             players: list[Player],
             rng: random.Random | None = None,
+            observers: list[GameObserver] | None = None,
     ) -> None:
         if len(players) < 2:
             raise ValueError("Qwixx requires at least 2 players.")
 
         self.players: list[Player] = players
         self.rng: random.Random | None = rng
+        self.observers: list[GameObserver] = observers if observers is not None else []
         # Each player gets a score sheet
         self.sheets: dict[Player, ScoreSheet]
         self.dice_pool: DicePool
@@ -47,6 +50,13 @@ class QwixxGame:
         self.active_index = 0
         self.locked_rows = set()
 
+    def _notify(self, method_name: str, *args: object) -> None:
+        """Safely dispatches an event to all registered observers."""
+        for observer in self.observers:
+            handler = getattr(observer, method_name, None)
+            if callable(handler):
+                handler(*args)
+
     @property
     def active_player(self) -> Player:
         """Returns the player whose turn it currently is to roll."""
@@ -62,6 +72,7 @@ class QwixxGame:
             return True
 
         return False
+
     def _apply_mark(self, player: Player, action: MarkAction) -> None:
         """Applies a mark to a player's sheet and synchronizes locks across the game."""
         sheet = self.sheets[player]
@@ -76,6 +87,8 @@ class QwixxGame:
                 if other_player is not player:
                     other_sheet.external_lock_row(action.color)
 
+            self._notify("on_row_locked", action.color, player)
+
     def play_turn(self) -> DiceRoll:
         """Executes one full turn cycle:
 
@@ -88,8 +101,12 @@ class QwixxGame:
         if self.is_game_over:
             raise RuntimeError("Cannot play turn; game is already over.")
 
-        roll = self.dice_pool.roll(rng=self.rng)
         active_p = self.active_player
+        self._notify("on_turn_start", active_p)
+
+        roll = self.dice_pool.roll(rng=self.rng)
+        self._notify("on_dice_rolled", roll) 
+
         active_made_mark = False
 
         # --- Phase 1: The White Dice Sum (all players) ---
@@ -109,6 +126,8 @@ class QwixxGame:
             if chosen_action not in valid_actions:
                 chosen_action = PassAction() # any invalid moves (cheats?) are treated as a pass
 
+            self._notify("on_action_taken", player, chosen_action, "Phase 1 (White)")
+
             if isinstance(chosen_action, MarkAction):
                 self._apply_mark(player, chosen_action)
                 if is_active:
@@ -127,6 +146,8 @@ class QwixxGame:
         if chosen_color_action not in valid_color_actions:
             chosen_color_action = PassAction()
 
+        self._notify("on_action_taken", active_p, chosen_color_action, "Phase 2 (Color)")
+
         if isinstance(chosen_color_action, MarkAction):
             self._apply_mark(active_p, chosen_color_action)
             active_made_mark = True
@@ -134,6 +155,7 @@ class QwixxGame:
         # --- Penalty Check for Active Player ---
         if not active_made_mark:
             active_sheet.add_penalty()
+            self._notify("on_penalty_assigned", active_p, active_sheet.penalties)
 
         # Advance to the next player
         self.active_index = (self.active_index + 1) % len(self.players)
@@ -144,4 +166,6 @@ class QwixxGame:
         while not self.is_game_over:
             self.play_turn()
 
-        return {p: self.sheets[p].total_score() for p in self.players}
+        final_scores = {p: self.sheets[p].total_score() for p in self.players}
+        self._notify("on_game_over", final_scores)
+        return final_scores
