@@ -4,6 +4,7 @@ Quick runner script to simulate multiple headless matches between bots."""
 
 from qwixx.core.game import QwixxGame
 from qwixx.players.random_player import RandomPlayer
+from qwixx.core.observer import ConsoleObserver
 
 
 def main() -> None:
@@ -30,3 +31,15 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+# Run this in py interpreter to see output of simulated game.
+
+# from qwixx.core.game import QwixxGame
+# from qwixx.players.random_player import RandomPlayer
+# from qwixx.core.observer import ConsoleObserver
+
+# alice = RandomPlayer("Alice")
+# bob = RandomPlayer("Bob")
+# game = QwixxGame(players=[alice, bob], observers=[ConsoleObserver()])
+# game.play_game()
