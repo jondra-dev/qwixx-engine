@@ -37,7 +37,7 @@ def run_observed_match() -> None:
 
 def main() -> None:
     # Check if a choice is passed via terminal: python simulate.py 1
-    choice = sys.argv[1] if len)sys.argv) > 1 else None
+    choice = sys.argv[1] if len(sys.argv) > 1 else None
 
     if not choice:
         print("Select simulation mode:")
