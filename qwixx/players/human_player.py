@@ -68,11 +68,10 @@ class HumanCLIPlayer(Player):
         role = "ACTIVE PLAYER" if is_active else "PASSIVE PLAYER"
         return self._prompt_action(f"Phase 1 (White Sum: {roll.white_sum}) - {role}", sheet, roll, valid_actions)
 
-    def choose_colored_action(
+    def choose_color_action(
             self,
             sheet: ScoreSheet,
             roll: DiceRoll,
             valid_actions: list[Action],
-            is_active: bool,
     ) -> Action:
         return self._prompt_action(f"Phase 2 (Colored Combination)", sheet, roll, valid_actions)
