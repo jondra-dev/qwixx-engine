@@ -43,7 +43,6 @@ class HumanCLIPlayer(Player):
     ) -> Action:
         """Displays sheet, roll, and choices, prompting the user until a valid index is chosen."""
 
-        print(f"Roll: {roll}")
         print (render_sheet(self.name, sheet))
         print(f"[{phase_name}] Choose your action:")
 
