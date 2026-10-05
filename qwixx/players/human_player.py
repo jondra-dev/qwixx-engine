@@ -22,7 +22,7 @@ def format_row(row: Row) -> str:
     lock_sym = "[LOCKED]" if row.is_locked else "       "
     return f"{row.color.value:<6} | {' '.join(items)} | Marks: {row.mark_count:>2} {lock_sym}"
 
-def render_sheet(name: str, sheet: ScoreSheet) -> None:
+def render_sheet(name: str, sheet: ScoreSheet) -> str:
     """Generates a complete multi-line terminal display of a scoresheet."""
     header = f"=== {name}'s Scoresheet ==="
     divider = "-" * len(header)
