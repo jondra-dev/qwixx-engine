@@ -10,17 +10,44 @@ from qwixx.core.dice import DiceRoll
 from qwixx.core.sheet import Row, RowColor, ScoreSheet
 from qwixx.players.base import Player
 
-def format_row(row: Row) -> str:
-    """Renders a single row with crossed-out marks, open numbers, and lock status."""
-    items: list[str] = []
-    for num in row.target_sequence:
-        if num in row.marked_numbers:
-            items.append(" X")
-        else:
-            items.append(f"{num:>2}")
+# ANSI escape sequences for terminal colors and text styles
+ANSI_RESET: str = "\033[0m"
+ANSI_BOLD: str = "\033[1m"
+ANSI_DIM: str = "\033[2m"
+ANSI_STRIKETHROUGH: str = "\033[9m"
 
-    lock_sym = "[LOCKED]" if row.is_locked else "       "
-    return f"{row.color.value:<6} | {' '.join(items)} | Marks: {row.mark_count:>2} {lock_sym}"
+ROW_ANSI_COLORS: dict[RowColor, str] = {
+    RowColor.RED: "\033[91m",   # Bright Red
+    RowColor.YELLOW: "\033[93m",  # Bright Yellow
+    RowColor.GREEN: "\033[92m",  # Bright Green
+    RowColor.BLUE: "\033[94m",   # Bright Blue
+}
+
+def format_row(row: Row) -> str:
+    """Renders a single colorized row with marks, skipped dashes, and lock status."""
+    color_code = ROW_ANSI_COLORS[row.color]
+    seq = row.target_sequence
+
+    # Find the index of the right-most mark (-1 if no marks yet)
+    last_marked_idx: int = seq.index(row.marked_numbers[-1]) if row.marked_numbers else -1
+    
+    items: list[str] = []
+    for idx, num in enumerate(row.target_sequence):
+        if num in row.marked_numbers:
+            # Marked numbers: Bold 'X' in the row's color
+            items.append(f"{ANSI_BOLD}{color_code} X{ANSI_RESET}")
+        elif idx < last_marked_idx or row.is_locked:
+            # Skipped numbers (left of last mark) or locked out: Dimmed '-': items.append(f"{ANSI_DIM} -{ANSI_RESET}")
+            # We'll use dimmed strikethrough numbers in the following:
+            items.append(f"{ANSI_DIM}{ANSI_STRIKETHROUGH}{num:>2}{ANSI_RESET}")
+        else:
+            # Still open to be marked: Normal colored number
+            items.append(f"{color_code}{num:>2}{ANSI_RESET}")
+
+    lock_sym = f"{ANSI_BOLD}[LOCKED]{ANSI_RESET}" if row.is_locked else "       "
+    row_label = f"{ANSI_BOLD}{color_code}{row.color.value.upper():<6}{ANSI_RESET}"
+    
+    return f"{row_label} | {' '.join(items)} | Marks: {row.mark_count:>2} {lock_sym}"
 
 def render_sheet(name: str, sheet: ScoreSheet) -> str:
     """Generates a complete multi-line terminal display of a scoresheet."""
@@ -38,10 +65,9 @@ class HumanCLIPlayer(Player):
             self,
             phase_name: str,
             sheet: ScoreSheet,
-            roll: DiceRoll,
             valid_actions: list[Action],
     ) -> Action:
-        """Displays sheet, roll, and choices, prompting the user until a valid index is chosen."""
+        """Displays sheet, and choices, prompting the user until a valid index is chosen."""
 
         print (render_sheet(self.name, sheet))
         print(f"[{phase_name}] Choose your action:")
@@ -65,7 +91,7 @@ class HumanCLIPlayer(Player):
             is_active: bool,
     ) -> Action:
         role = "ACTIVE PLAYER" if is_active else "PASSIVE PLAYER"
-        return self._prompt_action(f"Phase 1 (White Sum: {roll.white_sum}) - {role}", sheet, roll, valid_actions)
+        return self._prompt_action(f"Phase 1 (White Sum: {roll.white_sum}) - {role}", sheet, valid_actions)
 
     def choose_color_action(
             self,
@@ -73,4 +99,4 @@ class HumanCLIPlayer(Player):
             roll: DiceRoll,
             valid_actions: list[Action],
     ) -> Action:
-        return self._prompt_action(f"Phase 2 (Colored Combination)", sheet, roll, valid_actions)
+        return self._prompt_action(f"Phase 2 (Colored Combination)", sheet, valid_actions)
