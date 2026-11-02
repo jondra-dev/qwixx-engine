@@ -56,11 +56,17 @@ def get_legal_color_actions(sheet: ScoreSheet, roll: DiceRoll) -> list[Action]:
     colored die to mark that color's row. Passing is always an available choice."""
     legal_actions: list[Action] = [PassAction()]
 
-    # Evaluate each colored die still in play
-    for color in roll.colored_dice: 
-        row = sheet.rows[color]
-        # A roll may provide 1 or 2 distinct sums for this color
-        possible_sums = roll.color_combinations(color)
+    # Iterate through sheet.rows so colors always appear in standard order
+    for color, row in sheet.rows.items():
+        if color not in roll.colored_dice:
+            continue # Skip colors that weren't rolled (e.g., if the red die was locked)
+
+        # Sort sums ascending for Red/Yellow
+        # and descending for Green/Blue
+        possible_sums: list[int] = sorted(
+            roll.color_combinations(color),
+            reverse=not row.ascending
+        )
 
         for combo_sum in possible_sums:
             if row.can_mark(combo_sum):

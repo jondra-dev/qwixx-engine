@@ -10,6 +10,12 @@ from qwixx.core.dice import DiceRoll
 from qwixx.core.sheet import Row, RowColor, ScoreSheet
 from qwixx.players.base import Player
 
+# Standard lib imports:
+#   - msvcrt: Windows-only C runtime lib providing low-level console key reading (getwch)
+#   - sys: provides access to stdin.isatty() to check if running an interactive terminal
+import msvcrt
+import sys
+
 # ANSI escape sequences for terminal colors and text styles
 ANSI_RESET: str = "\033[0m"
 ANSI_BOLD: str = "\033[1m"
@@ -57,6 +63,27 @@ def render_sheet(name: str, sheet: ScoreSheet) -> str:
     footer = f"Penalties: {sheet.penalties}/4 (-{sheet.penalties * 5} pts) | Total Score: {sheet.total_score()} pts"
     return f"\n{header}\n{rows_str}\n{divider}\n{footer}\n"
 
+def read_single_keypress(prompt: str) -> str:
+    """
+    Reads a single character immediately from the console without waiting for Enter.
+    
+    Falls back to standard input() if stdin is redirected (such as during pytest running).
+    """
+    if not sys.stdin.isatty():
+        return input(prompt).strip()
+
+    # Print prompt without newline and flush immediately so it appears before key wait
+    print(prompt, end="", flush=True)
+    char: str = msvcrt.getwch() # Read a single wide char (supports Unicode)
+
+    # In raw console mode, Crtl+C is captured as '\x04', so we'll check so we can raise KeyboardInterrupt for it
+    if char == '\x03':  # Ctrl+C
+        print()
+        raise KeyboardInterrupt
+
+    # Echo the pressed key and move to the next line
+    print(char)
+    return char
 
 class HumanCLIPlayer(Player):
     """An interactive player that displays choices to stdout and reads from stdin."""
@@ -76,7 +103,7 @@ class HumanCLIPlayer(Player):
             print(f"  [{idx}] {action}")
 
         while True:
-            raw_input = input(f"Select option (0-{len(valid_actions) - 1}): ").strip()
+            raw_input: str = read_single_keypress(f"Select option (0-{len(valid_actions) - 1}): ")
             if raw_input.isdigit():
                 choice = int(raw_input)
                 if 0 <= choice < len(valid_actions):
